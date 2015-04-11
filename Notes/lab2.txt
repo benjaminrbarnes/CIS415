@@ -1,0 +1,16 @@
+to run valgrind we just do
+valgrind ./programName
+
+if you do 
+	valgrind --leak-check=full 
+	it will show you where 
+
+you can create an alias
+alias vg='valgrind --leak-check=full'
+
+struct LList
+	size 
+
+struct mlist
+	array pointer
+	size
