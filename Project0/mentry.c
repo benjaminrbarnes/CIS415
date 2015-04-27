@@ -1,3 +1,11 @@
+/*
+ * Benjamin Barnes
+ * 951289352
+ * CIS415 Project 0
+ *
+ * This is my own work
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,10 +28,9 @@ MEntry *me_get(FILE *fd){
     MEntry *entry;
 
     if((entry = (MEntry *)malloc(sizeof(MEntry))) == NULL) return entry;
-    entry->surname = malloc(sizeof(char)*100);
-    entry->zipcode = malloc(sizeof(char)*20);
-    entry->full_address = malloc(sizeof(char)*LINESIZE*3);
-
+    if((entry->surname = malloc(sizeof(char)*100)) == NULL) return entry;
+    if((entry->zipcode = malloc(sizeof(char)*20)) == NULL) return entry;
+    if((entry->full_address = malloc(sizeof(char)*LINESIZE*3)) == NULL) return entry;
 
     sprintf(entry->full_address, "%s", line);
 
@@ -43,12 +50,9 @@ MEntry *me_get(FILE *fd){
     // getting house number
     char* temp;
     temp = (char*)calloc(20, sizeof(char));
-    //temp[0] = '0';
     int k;
-    //entry->zipcode[0] = '0';
     for(i = 0, k = 0; ;i++){
         if(line[i] != ' ' && line[i] >= '0' && line[i] <= '9'){
-            // we use the zip code as a temp variable to store the chars
             temp[k] = line[i];
             k++;
         }else if(line[i] == '\n'){
@@ -56,7 +60,6 @@ MEntry *me_get(FILE *fd){
             break;
         }
     }
-
     free(temp);
 
     // writing line to full address
@@ -81,19 +84,19 @@ MEntry *me_get(FILE *fd){
     return entry;
 }
 
+
 /* me_hash computes a hash of the MEntry, mod size */
 unsigned long me_hash(MEntry *me, unsigned long size){
-
-    unsigned long sum = 0;
-    sum += me->house_number;
     int i;
+    unsigned long sum = 0;
+    sum += (unsigned long)me->house_number;
 
     for(i = 0; me->zipcode[i] != '\0'; i++){
-        sum += (int)(me->zipcode[i]);
-    }
+        sum += (unsigned long)(me->zipcode[i]) * (i+1) * 13;
 
+    }
     for(i = 0; me->surname[i] != '\0'; i++){
-        sum += (int)(me->surname[i]);
+        sum += (unsigned long)(me->surname[i]) * (i+1) * 13;
     }
 
     return (sum % size);
@@ -108,19 +111,21 @@ void me_print(MEntry *me, FILE *fd){
  * me1<me2, me1==me2, me1>me2
  */
 int me_compare(MEntry *me1, MEntry *me2){
-    if((strcmp(me1->surname, me2->surname) == 0)
-        && (strcmp(me1->zipcode, me2->zipcode) == 0)
-        && (me1->house_number == me2->house_number)){
+    if((strcmp(me1->surname, me2->surname) == 0) && (strcmp(me1->zipcode, me2->zipcode) == 0) && (me1->house_number == me2->house_number)){
         return 0;
-    }else{
+    }else if(me1->house_number < me2->house_number){
         return -1;
+    }else{
+        return 1;
     }
 }
 
 /* me_destroy destroys the mail entry */
 void me_destroy(MEntry *me){
-    free(me->surname);
-    free(me->full_address);
-    free(me->zipcode);
+    if(me != NULL) {
+        free(me->surname);
+        free(me->full_address);
+        free(me->zipcode);
+    }
     free(me);
 }
