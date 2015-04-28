@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "p1fxns.h"
 
 #define BUF_SIZE 1024
@@ -16,7 +17,7 @@
 int main(){
     int i;
     int j;
-    int k = 0;
+    //int k = 0;
     int result;
     int num_of_prog;
     int word_location;
@@ -33,27 +34,47 @@ int main(){
     while ((result = p1getline(0, buf, BUF_SIZE)) != 0) {
         word_location = 0;
         j = 0;
+        ptr = &word[0];
+
+        for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
         word_location = p1getword(buf, word_location, word);
         arg[0] = p1strdup(word);
-        ptr = &word[0];
+
         for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
-        p1putstr(1, arg[0]);
-        printf("\n");
+        //p1putstr(1, arg[0]);
+        //printf("\n");
         j++;
         while ((word_location = p1getword(buf, word_location, word)) != -1) {
             arg[j] = p1strdup(word);
             ptr = &word[0];
             for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
-            p1putstr(1, arg[j]);
+            //p1putstr(1, arg[j]);
+            //printf("\n");
+            //printf("printing arg above\n");
             j++;
+        }
+        /* here we are removing the \n char from the last string*/
+        char* c = arg[j-1];
+        while(1){
+            if(*c == '\0'){
+                c--;
+                if(*c == '\n'){
+                    *c = '\0';
+                    //printf("replaced\n");
+                }
+                //printf("end o line\n");
+                break;
+            }
+            c++;
         }
         arg[j] = NULL;
 
         pid[num_of_prog] = fork();
         if(pid[num_of_prog] == 0){
-            printf("Calling execute\n");
+            //printf("Calling execute\n");
             execvp(arg[0], arg);
         }
+        /* freeing strings stored with malloc */
         for(i = 0; i < j; i++){
             free(arg[i]);
         }
@@ -61,7 +82,8 @@ int main(){
     }
 
     for(i = 0; i < num_of_prog; i++){
-        //wait(pid[i]);
+        int status;
+        waitpid(pid[i], &status, 0);
     }
 
 /*
