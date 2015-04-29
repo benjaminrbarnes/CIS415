@@ -26,7 +26,7 @@ int main(){
     //char *arg[MAX_ARGS][WORD_SIZE];
     char *arg[MAX_ARGS];
     //char *program[MAX_ARGS][WORD_SIZE];
-    char *ptr;
+    //char *ptr;
     pid_t pid[MAX_NUM_PID];
 
     num_of_prog = 0;
@@ -34,20 +34,20 @@ int main(){
     while ((result = p1getline(0, buf, BUF_SIZE)) != 0) {
         word_location = 0;
         j = 0;
-        ptr = &word[0];
+        //ptr = &word[0];
 
-        for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
+        //for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
         word_location = p1getword(buf, word_location, word);
         arg[0] = p1strdup(word);
 
-        for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
+        //for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
         //p1putstr(1, arg[0]);
         //printf("\n");
         j++;
         while ((word_location = p1getword(buf, word_location, word)) != -1) {
             arg[j] = p1strdup(word);
-            ptr = &word[0];
-            for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
+            //ptr = &word[0];
+            //for (i = 0; i < p1strlen(ptr); i++) word[i] = '0';
             //p1putstr(1, arg[j]);
             //printf("\n");
             //printf("printing arg above\n");
