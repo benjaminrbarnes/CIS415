@@ -3,6 +3,12 @@
 //
 #include <stdio.h>
 int main(){
-    printf("Hello\n");
+    int i = 0;
+    while(i < 10){
+        printf("%d on iteration: %d\n",getpid(),i);
+        i++;
+        sleep(3);
+    }
+
     return 1;
 }
