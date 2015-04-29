@@ -20,11 +20,16 @@ void USR1_handler(int signo) {
     USR1_received++;
 }
 
-void signal_handler(int sig_num){
-    switch(sig_num){
-        case SIGUSR1:
-            printf("signaled\n");
+void remove_newline_char(char *char_ptr){
+    while(1){
+        if(*char_ptr == '\0'){
+            char_ptr--;
+            if(*char_ptr == '\n'){
+                *char_ptr = '\0';
+            }
             break;
+        }
+        char_ptr++;
     }
 }
 
@@ -46,9 +51,9 @@ int main(){
         return -1;
     }
 
-    sigset_t signal_set;
-    sigemptyset (&signal_set);
-    sigaddset (&signal_set, SIGUSR1);
+//    sigset_t signal_set;
+//    sigemptyset (&signal_set);
+//    sigaddset (&signal_set, SIGUSR1);
 
     while ((result = p1getline(0, buf, BUF_SIZE)) != 0) {
         word_location = 0;
@@ -62,16 +67,7 @@ int main(){
         }
         /* here we are removing the \n char from the last string*/
         char* c = arg[j-1];
-        while(1){
-            if(*c == '\0'){
-                c--;
-                if(*c == '\n'){
-                    *c = '\0';
-                }
-                break;
-            }
-            c++;
-        }
+        remove_newline_char(c);
         arg[j] = NULL;
         pid[num_of_prog] = fork();
         if(pid[num_of_prog] == 0){
