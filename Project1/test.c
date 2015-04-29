@@ -4,7 +4,7 @@
 #include <stdio.h>
 int main(){
     int i = 0;
-    while(i < 2){
+    while(i < 4){
         printf("%d on iteration: %d\n",getpid(),i);
         i++;
         sleep(3);

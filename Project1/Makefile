@@ -11,6 +11,9 @@ uspsv2: uspsv2.o p1fxns.o
 uspsv3: uspsv3.o p1fxns.o
 	gcc $(CFLAGS) -o uspsv3 uspsv3.o p1fxns.o
 
+uspsv4: uspsv4.o p1fxns.o
+	gcc $(CFLAGS) -o uspsv4 uspsv4.o p1fxns.o
+
 signal: signal.o p1fxns.o
 	gcc $(CFLAGS) -o signal signal.o p1fxns.o
 
@@ -26,6 +29,7 @@ clean:
 uspsv1.o: uspsv1.c p1fxns.h
 uspsv2.o: uspsv2.c p1fxns.h
 uspsv3.o: uspsv3.c p1fxns.h
+uspsv4.o: uspsv4.c p1fxns.h
 signal.o: signal.c p1fxns.h
 child_handler.o: child_handler.c p1fxns.h
 setitimer.o: setitimer.c p1fxns.h

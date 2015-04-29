@@ -186,7 +186,7 @@ int main() {
             curr = curr->next;
             free(temp);
         }else if(list_of_programs->num_of_programs != 0){
-            curr = curr->next;
+                curr = curr->next;
         }
         ALRM_received = 0;
     }
