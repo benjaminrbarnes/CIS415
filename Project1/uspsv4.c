@@ -15,13 +15,14 @@
 #define WORD_SIZE 512
 #define MAX_ARGS 512
 #define MAX_NUM_PID 1024
-#define QUANTUM 100	/* number of milliseconds */
+#define QUANTUM 100    /* number of milliseconds */
 
 typedef struct process Process;
 int USR1_received = 0;
 int ALRM_received = 0;
 Process *curr_running;
 
+/* process struct holds pid and acts as node to doubly LList (Programs) */
 typedef struct process {
     int first;
     pid_t pid;
@@ -29,6 +30,7 @@ typedef struct process {
     Process *prev;
 } Process;
 
+/* Programs struct acts as doubly linked list; nodes are processes */
 typedef struct programs {
     int num_of_programs;
     Process *head;
@@ -36,10 +38,9 @@ typedef struct programs {
 } Programs;
 
 
-void timer_handler( int sig) {
+void timer_handler(int sig) {
     p1putstr(1, "Timer fired.\n");
     kill(curr_running->pid, SIGSTOP);
-    //printf("alarming\n");
     ALRM_received++;
 }
 
@@ -51,14 +52,6 @@ void USR1_handler(int signo) {
 void ALRM_handler(int signo) {
     kill(curr_running->pid, SIGSTOP);
     printf("alarming\n");
-    ALRM_received++;
-}
-
-
-/* child handler incase process finishes before alarm handler is called  */
-void CHLD_handler(int signo){
-    kill(curr_running->pid, SIGSTOP);
-    //printf("Child\n");
     ALRM_received++;
 }
 
@@ -81,14 +74,11 @@ int main() {
     int i;
     int j;
     int result;
-    int num_of_prog;
     int word_location;
     char word[WORD_SIZE];
     char buf[BUF_SIZE];
     char *arg[MAX_ARGS];
     Process *curr;
-    num_of_prog = 0;
-
     struct itimerval it_val;
 
     if (signal(SIGALRM, timer_handler) == SIG_ERR) {
@@ -96,52 +86,56 @@ int main() {
         _exit(1);
     }
 
+    if (signal(SIGUSR1, USR1_handler) == SIG_ERR) {
+        p1perror(1, "Unable to catch SIGUSR1");
+        exit(1);
+    }
+
     it_val.it_value.tv_sec = QUANTUM / 1000;
     it_val.it_value.tv_usec = (1000 * QUANTUM) % 1000000;
     it_val.it_interval = it_val.it_value;
 
 
-    if (signal(SIGUSR1, USR1_handler) == SIG_ERR){
-        //|| signal(SIGALRM, ALRM_handler) == SIG_ERR){
-//            || signal(SIGCHLD, ALRM_handler) == SIG_ERR) {
-        /* inform the caller and kill your program */
-        p1perror(1, "Unable to cath SIGUSR1");
-        exit(1);
-    }
 
     Programs *list_of_programs = malloc(sizeof(Programs));
     list_of_programs->head = NULL;
     list_of_programs->tail = NULL;
     list_of_programs->num_of_programs = 0;
 
+    /* reading in line by line until we hit EOF */
     while ((result = p1getline(0, buf, BUF_SIZE)) != 0) {
         word_location = 0;
         j = 0;
         word_location = p1getword(buf, word_location, word);
         arg[0] = p1strdup(word);
         j++;
+
+        /* reading in words */
         while ((word_location = p1getword(buf, word_location, word)) != -1) {
             arg[j] = p1strdup(word);
             j++;
         }
+
         /* here we are removing the \n char from the last string*/
         char *c = arg[j - 1];
         remove_newline_char(c);
         arg[j] = NULL;
 
-
+        /* creating process struct (node of LList) */
         Process *p;
-        if((p = (Process *)malloc(sizeof(Process))) == NULL) return -1;
+        if ((p = (Process *) malloc(sizeof(Process))) == NULL) return -1;
         p->pid = fork();
         p->first = 1;
         p->next = NULL;
         p->prev = NULL;
 
-        if (list_of_programs->num_of_programs == 0) { // if list of programs has no programs, make it the first
+        /* if list of programs has no programs, make it the first & last */
+        if (list_of_programs->num_of_programs == 0) {
             list_of_programs->head = p;
             list_of_programs->tail = p;
             list_of_programs->num_of_programs++;
-        } else {        // otherwise, add it to the end of the list of programs
+        } else {
+            /* otherwise, add it to the end of the list of programs */
             list_of_programs->tail->next = p;
             p->prev = list_of_programs->tail;
             list_of_programs->tail = p;
@@ -149,104 +143,102 @@ int main() {
             list_of_programs->num_of_programs++;
         }
 
+        /* continue if fork was successful */
         if (list_of_programs->tail->pid == 0) {
             while (!USR1_received)
                 sleep(1);
-            if(execvp(arg[0], arg) < 0){
+            if (execvp(arg[0], arg) < 0) {
                 printf("failed\n");
-//                for (i = 0; i < j; i++) {
-//                    free(arg[i]);
-//                }
-                if(list_of_programs->head == p){
-                    // if equal to head, we know it is only one b/c we add to tail
-                    free(p);
-                    free(list_of_programs);
-                    list_of_programs = NULL;
-                }else{
-                    // we know it is the second or farther
-                    list_of_programs->tail = list_of_programs->tail->prev;
-                    list_of_programs->tail->next = NULL;
-                    list_of_programs->num_of_programs--;
-                    free(p);
-
+                for (i = 0; i < j; i++) {
+                    free(arg[i]);
                 }
-//                curr = list_of_programs->head;
-//                while(curr != NULL){
-//                    if(curr->next != NULL) {
-//                        Process *temp = curr->next;
-//                        free(curr);
-//                        curr = temp;
-//                    }else{
-//                        free(curr);
-//                        curr = NULL;
-//                    }
-//                }
-//                free(list_of_programs);
+
+                /* freeing nodes (processes) and the list struct as execvp failed */
+                curr = list_of_programs->head;
+                while (curr != NULL) {
+                    if (curr->next != NULL) {
+                        Process *temp = curr->next;
+                        free(curr);
+                        curr = temp;
+                    } else {
+                        free(curr);
+                        curr = NULL;
+                    }
+                }
+                free(list_of_programs);
+                exit(1);
             }
+        }else{
+            /* fork failed */
         }
 
-        /* freeing strings stored with malloc */
+        /* freeing strings stored with strdup */
         for (i = 0; i < j; i++) {
             free(arg[i]);
         }
-        if(list_of_programs != NULL) {
-            num_of_prog++;
-        }
     }
 
-    printf("number of programs: %d\n", num_of_prog);
+    //printf("number of programs: %d\n", list_of_programs->num_of_programs);
 
     if (setitimer(ITIMER_REAL, &it_val, NULL) == -1) {
         p1perror(1, "Error calling setitimer()");
         _exit(1);
     }
-    if(list_of_programs != NULL) {
-        curr = list_of_programs->head;
-    }
-    while (list_of_programs->num_of_programs > 0 && list_of_programs != NULL) {
-        if (curr == NULL) {                       // if equal to null, we are at the end, go back to front
+
+    curr = list_of_programs->head;
+    while (list_of_programs->num_of_programs > 0) {
+        /* if equal to null, we are at the end, go back to front */
+        if (curr == NULL) {
             curr = list_of_programs->head;
         }
+        /* set the running pid to global */
         curr_running = curr;
-        if(curr_running->first) {
+        if (curr_running->first) {
             kill(curr_running->pid, SIGUSR1);
             curr_running->first = 0;
-        }else {
+        } else {
             kill(curr_running->pid, SIGCONT);
         }
-        //alarm(1);
-        while (!ALRM_received) {
-            // do nothing while we wait for alarm
-        }
-        if (waitpid(curr_running->pid, NULL, WNOHANG) != 0) { // child is done
+
+        /* do nothing while we wait for alarm */
+        while (!ALRM_received);
+
+        /* once alarm is set off, see if child is done */
+        if (waitpid(curr_running->pid, NULL, WNOHANG) != 0) {
             printf("child finished\n");
-            if (curr_running == list_of_programs->head) { // we are done with process at the head
+            /* if child is done, we need to remove it, so here we are seeing its position
+             * before we remove it from linked list */
+            if (curr_running == list_of_programs->head) {
+                /* we are done with process at the head */
                 list_of_programs->head = curr_running->next;
                 if (list_of_programs->head != NULL)
                     list_of_programs->head->prev = NULL;
-            } else if (curr_running == list_of_programs->tail) {   // we are done with process at tail
+            } else if (curr_running == list_of_programs->tail) {
+                /* we are done with process at tail */
                 list_of_programs->tail = curr_running->prev;
                 if (list_of_programs->tail != NULL)
                     list_of_programs->tail->next = NULL;
-            } else {                                              // process is somewhere in the middle
+            } else {
+                /* process is somewhere in the middle */
                 curr_running->prev->next = curr_running->next;
                 curr_running->next->prev = curr_running->prev;
             }
             list_of_programs->num_of_programs--;
 
-            // freeing finished node
+            /* freeing finished node */
             Process *temp = curr;
             curr = curr->next;
             free(temp);
-        }else if(list_of_programs->num_of_programs != 0){
-                curr = curr->next;
+        } else if (list_of_programs->num_of_programs != 0) {
+            curr = curr->next;
         }
+        /* reset alarm for next */
         ALRM_received = 0;
     }
-    if(list_of_programs != NULL){
-        printf("freeing programs\n");
-        free(list_of_programs);
-    }
 
-    //return 1;
+    /* freeing struct */
+    free(list_of_programs);
+
+
+    return 1;
 }
