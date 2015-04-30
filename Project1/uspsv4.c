@@ -148,14 +148,28 @@ int main() {
             list_of_programs->tail->next = NULL;
             list_of_programs->num_of_programs++;
         }
+
         if (list_of_programs->tail->pid == 0) {
             while (!USR1_received)
                 sleep(1);
             if(execvp(arg[0], arg) < 0){
                 printf("failed\n");
-////                for (i = 0; i < j; i++) {
-////                    free(arg[i]);
-////                }
+//                for (i = 0; i < j; i++) {
+//                    free(arg[i]);
+//                }
+                if(list_of_programs->head == p){
+                    // if equal to head, we know it is only one b/c we add to tail
+                    free(p);
+                    free(list_of_programs);
+                    list_of_programs = NULL;
+                }else{
+                    // we know it is the second or farther
+                    list_of_programs->tail = list_of_programs->tail->prev;
+                    list_of_programs->tail->next = NULL;
+                    list_of_programs->num_of_programs--;
+                    free(p);
+
+                }
 //                curr = list_of_programs->head;
 //                while(curr != NULL){
 //                    if(curr->next != NULL) {
@@ -169,14 +183,15 @@ int main() {
 //                }
 //                free(list_of_programs);
             }
-        }else{
-            // fork failed, print error
         }
+
         /* freeing strings stored with malloc */
         for (i = 0; i < j; i++) {
             free(arg[i]);
         }
-        num_of_prog++;
+        if(list_of_programs != NULL) {
+            num_of_prog++;
+        }
     }
 
     printf("number of programs: %d\n", num_of_prog);
@@ -185,8 +200,10 @@ int main() {
         p1perror(1, "Error calling setitimer()");
         _exit(1);
     }
-    curr = list_of_programs->head;
-    while (list_of_programs->num_of_programs > 0) {
+    if(list_of_programs != NULL) {
+        curr = list_of_programs->head;
+    }
+    while (list_of_programs->num_of_programs > 0 && list_of_programs != NULL) {
         if (curr == NULL) {                       // if equal to null, we are at the end, go back to front
             curr = list_of_programs->head;
         }
@@ -226,6 +243,10 @@ int main() {
         }
         ALRM_received = 0;
     }
-    free(list_of_programs);
-    return 1;
+    if(list_of_programs != NULL){
+        printf("freeing programs\n");
+        free(list_of_programs);
+    }
+
+    //return 1;
 }
