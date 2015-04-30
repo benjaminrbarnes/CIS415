@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <signal.h>
 #include <unistd.h>
@@ -14,6 +15,7 @@
 #define WORD_SIZE 512
 #define MAX_ARGS 512
 #define MAX_NUM_PID 1024
+#define QUANTUM 100	/* number of milliseconds */
 
 typedef struct process Process;
 int USR1_received = 0;
@@ -34,16 +36,32 @@ typedef struct programs {
 } Programs;
 
 
-void USR1_handler(int signo) {
+void timer_handler( int sig) {
+    p1putstr(1, "Timer fired.\n");
+    kill(curr_running->pid, SIGSTOP);
+    //printf("alarming\n");
+    ALRM_received++;
+}
 
+void USR1_handler(int signo) {
     USR1_received++;
 }
+
 
 void ALRM_handler(int signo) {
     kill(curr_running->pid, SIGSTOP);
     printf("alarming\n");
     ALRM_received++;
 }
+
+
+/* child handler incase process finishes before alarm handler is called  */
+void CHLD_handler(int signo){
+    kill(curr_running->pid, SIGSTOP);
+    //printf("Child\n");
+    ALRM_received++;
+}
+
 
 void remove_newline_char(char *char_ptr) {
     while (1) {
@@ -68,15 +86,27 @@ int main() {
     char word[WORD_SIZE];
     char buf[BUF_SIZE];
     char *arg[MAX_ARGS];
-    Process *pid[MAX_NUM_PID];
     Process *curr;
     num_of_prog = 0;
 
+    struct itimerval it_val;
 
-    if (signal(SIGUSR1, USR1_handler) == SIG_ERR
-        || signal(SIGALRM, ALRM_handler) == SIG_ERR) {
+    if (signal(SIGALRM, timer_handler) == SIG_ERR) {
+        p1perror(1, "Unable to catch SIGALARM");
+        _exit(1);
+    }
+
+    it_val.it_value.tv_sec = QUANTUM / 1000;
+    it_val.it_value.tv_usec = (1000 * QUANTUM) % 1000000;
+    it_val.it_interval = it_val.it_value;
+
+
+    if (signal(SIGUSR1, USR1_handler) == SIG_ERR){
+        //|| signal(SIGALRM, ALRM_handler) == SIG_ERR){
+//            || signal(SIGCHLD, ALRM_handler) == SIG_ERR) {
         /* inform the caller and kill your program */
-        return -1;
+        p1perror(1, "Unable to cath SIGUSR1");
+        exit(1);
     }
 
     Programs *list_of_programs = malloc(sizeof(Programs));
@@ -107,9 +137,6 @@ int main() {
         p->next = NULL;
         p->prev = NULL;
 
-        pid[num_of_prog] = p;
-        pid[num_of_prog + 1] = NULL;
-
         if (list_of_programs->num_of_programs == 0) { // if list of programs has no programs, make it the first
             list_of_programs->head = p;
             list_of_programs->tail = p;
@@ -121,13 +148,30 @@ int main() {
             list_of_programs->tail->next = NULL;
             list_of_programs->num_of_programs++;
         }
-
         if (list_of_programs->tail->pid == 0) {
             while (!USR1_received)
                 sleep(1);
-            execvp(arg[0], arg);
+            if(execvp(arg[0], arg) < 0){
+                printf("failed\n");
+////                for (i = 0; i < j; i++) {
+////                    free(arg[i]);
+////                }
+//                curr = list_of_programs->head;
+//                while(curr != NULL){
+//                    if(curr->next != NULL) {
+//                        Process *temp = curr->next;
+//                        free(curr);
+//                        curr = temp;
+//                    }else{
+//                        free(curr);
+//                        curr = NULL;
+//                    }
+//                }
+//                free(list_of_programs);
+            }
+        }else{
+            // fork failed, print error
         }
-
         /* freeing strings stored with malloc */
         for (i = 0; i < j; i++) {
             free(arg[i]);
@@ -136,18 +180,11 @@ int main() {
     }
 
     printf("number of programs: %d\n", num_of_prog);
-//    curr = list_of_programs->head;
-//    while (curr != NULL) {
-//        kill(curr->pid, SIGUSR1);
-//        curr = curr->next;
-//    }
-//
-//    curr = list_of_programs->head;
-//    while (curr != NULL) {
-//        kill(curr->pid, SIGSTOP);
-//        curr = curr->next;
-//    }
 
+    if (setitimer(ITIMER_REAL, &it_val, NULL) == -1) {
+        p1perror(1, "Error calling setitimer()");
+        _exit(1);
+    }
     curr = list_of_programs->head;
     while (list_of_programs->num_of_programs > 0) {
         if (curr == NULL) {                       // if equal to null, we are at the end, go back to front
@@ -160,11 +197,10 @@ int main() {
         }else {
             kill(curr_running->pid, SIGCONT);
         }
-        alarm(1);
+        //alarm(1);
         while (!ALRM_received) {
             // do nothing while we wait for alarm
         }
-        //int status;
         if (waitpid(curr_running->pid, NULL, WNOHANG) != 0) { // child is done
             printf("child finished\n");
             if (curr_running == list_of_programs->head) { // we are done with process at the head
@@ -190,8 +226,6 @@ int main() {
         }
         ALRM_received = 0;
     }
-
-    //printf("freeing list of programs\n");
     free(list_of_programs);
     return 1;
 }

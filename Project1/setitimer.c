@@ -7,7 +7,6 @@
 #define UNUSED __attribute__ ((unused))
 
 void timer_handler(UNUSED int sig) {
-
     p1putstr(1, "Timer fired.\n");
 
 }

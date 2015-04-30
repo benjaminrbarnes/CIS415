@@ -1,3 +1,4 @@
+echo hello
 ./a.out
-./a.out
-./a.out
+ls
+asdf

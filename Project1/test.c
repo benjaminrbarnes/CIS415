@@ -4,10 +4,10 @@
 #include <stdio.h>
 int main(){
     int i = 0;
-    while(i < 4){
+    while(i < 3){
         printf("%d on iteration: %d\n",getpid(),i);
         i++;
-        sleep(3);
+        sleep(2);
     }
 
     return 1;
