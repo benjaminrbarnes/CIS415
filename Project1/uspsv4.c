@@ -38,24 +38,22 @@ typedef struct programs {
 } Programs;
 
 
-void timer_handler(int sig) {
-    p1putstr(1, "Timer fired.\n");
-    kill(curr_running->pid, SIGSTOP);
-    ALRM_received++;
-}
-
-void USR1_handler(int signo) {
-    USR1_received++;
-}
-
-
-void ALRM_handler(int signo) {
-    kill(curr_running->pid, SIGSTOP);
-    printf("alarming\n");
-    ALRM_received++;
+void signal_handler(int sig){
+    switch (sig){
+        case SIGALRM:
+            //p1putstr(1, "Timer fired.\n");
+            printf("Timer fired. Stopping %d\n", curr_running->pid);
+            kill(curr_running->pid, SIGSTOP);
+            ALRM_received++;
+            break;
+        case SIGUSR1:
+            USR1_received++;
+            break;
+    }
 }
 
 
+/* removes a newline character from a word */
 void remove_newline_char(char *char_ptr) {
     while (1) {
         if (*char_ptr == '\0') {
@@ -72,7 +70,7 @@ void remove_newline_char(char *char_ptr) {
 //int main(int argc, const char *args[]) {
 int main() {
     int i;
-    int j;
+    int num_of_words;
     int result;
     int word_location;
     char word[WORD_SIZE];
@@ -81,22 +79,22 @@ int main() {
     Process *curr;
     struct itimerval it_val;
 
-    if (signal(SIGALRM, timer_handler) == SIG_ERR) {
+    /* attaching handlers to signal calls */
+    if (signal(SIGALRM, signal_handler) == SIG_ERR) {
         p1perror(1, "Unable to catch SIGALARM");
         _exit(1);
     }
-
-    if (signal(SIGUSR1, USR1_handler) == SIG_ERR) {
+    if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
         p1perror(1, "Unable to catch SIGUSR1");
         exit(1);
     }
 
+    /* initializing timer */
     it_val.it_value.tv_sec = QUANTUM / 1000;
     it_val.it_value.tv_usec = (1000 * QUANTUM) % 1000000;
     it_val.it_interval = it_val.it_value;
 
-
-
+    /* creating program list to hold processes */
     Programs *list_of_programs = malloc(sizeof(Programs));
     list_of_programs->head = NULL;
     list_of_programs->tail = NULL;
@@ -105,21 +103,21 @@ int main() {
     /* reading in line by line until we hit EOF */
     while ((result = p1getline(0, buf, BUF_SIZE)) != 0) {
         word_location = 0;
-        j = 0;
+        num_of_words = 0;
         word_location = p1getword(buf, word_location, word);
         arg[0] = p1strdup(word);
-        j++;
+        num_of_words++;
 
         /* reading in words */
         while ((word_location = p1getword(buf, word_location, word)) != -1) {
-            arg[j] = p1strdup(word);
-            j++;
+            arg[num_of_words] = p1strdup(word);
+            num_of_words++;
         }
 
         /* here we are removing the \n char from the last string*/
-        char *c = arg[j - 1];
+        char *c = arg[num_of_words - 1];
         remove_newline_char(c);
-        arg[j] = NULL;
+        arg[num_of_words] = NULL;
 
         /* creating process struct (node of LList) */
         Process *p;
@@ -149,7 +147,7 @@ int main() {
                 sleep(1);
             if (execvp(arg[0], arg) < 0) {
                 printf("failed\n");
-                for (i = 0; i < j; i++) {
+                for (i = 0; i < num_of_words; i++) {
                     free(arg[i]);
                 }
 
@@ -168,29 +166,33 @@ int main() {
                 free(list_of_programs);
                 exit(1);
             }
-        }else{
+        }else if(list_of_programs->tail->pid < 0){
             /* fork failed */
+            p1perror(1, "Fork Failed");
         }
 
         /* freeing strings stored with strdup */
-        for (i = 0; i < j; i++) {
+        for (i = 0; i < num_of_words; i++) {
             free(arg[i]);
         }
     }
 
-    //printf("number of programs: %d\n", list_of_programs->num_of_programs);
+    // printf("number of programs: %d\n", list_of_programs->num_of_programs);
 
     if (setitimer(ITIMER_REAL, &it_val, NULL) == -1) {
         p1perror(1, "Error calling setitimer()");
         _exit(1);
     }
 
+    /* Round Robin execution
+     * we continue going through the programs until they have all executed */
     curr = list_of_programs->head;
     while (list_of_programs->num_of_programs > 0) {
         /* if equal to null, we are at the end, go back to front */
         if (curr == NULL) {
             curr = list_of_programs->head;
         }
+
         /* set the running pid to global */
         curr_running = curr;
         if (curr_running->first) {
@@ -232,13 +234,13 @@ int main() {
         } else if (list_of_programs->num_of_programs != 0) {
             curr = curr->next;
         }
+
         /* reset alarm for next */
         ALRM_received = 0;
     }
 
     /* freeing struct */
     free(list_of_programs);
-
 
     return 1;
 }

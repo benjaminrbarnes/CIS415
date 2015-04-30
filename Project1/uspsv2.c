@@ -51,10 +51,6 @@ int main(){
         return -1;
     }
 
-//    sigset_t signal_set;
-//    sigemptyset (&signal_set);
-//    sigaddset (&signal_set, SIGUSR1);
-
     while ((result = p1getline(0, buf, BUF_SIZE)) != 0) {
         word_location = 0;
         j = 0;
@@ -73,15 +69,6 @@ int main(){
         if(pid[num_of_prog] == 0){
             while (! USR1_received)
                 sleep(1);
-            //execvp(file, args);
-            /*
-            int* k = NULL;
-            int f = 0;
-            printf("forked correctly \n");
-            if((f = sigwait(&signal_set, k)) == 0) printf("successful wait\n");  // sig wait
-            printf("should be 0 if sigwait was successful i think? : %d\n",f);
-             */
-            //printf("num\n");
             execvp(arg[0], arg);
         }
         /* freeing strings stored with malloc */
@@ -92,11 +79,7 @@ int main(){
     }
 
     for(i = 0; i < num_of_prog; i++){
-        //int status;
-        //signal(SIGUSR1, signal_handler);
         kill(pid[i], SIGUSR1);
-        //printf("should be 0 if worked.. : %d \n",status);
-        //waitpid(pid[i], &status, 0);
     }
     for(i = 0; i < num_of_prog; i++){
         kill(pid[i], SIGSTOP);
@@ -105,8 +88,7 @@ int main(){
         kill(pid[i], SIGCONT);
     }
     for(i = 0; i < num_of_prog; i++){
-        int status;
-        waitpid(pid[i], &status, 0);
+        waitpid(pid[i], NULL, 0);
     }
     return 1;
 }

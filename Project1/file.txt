@@ -1,4 +1,5 @@
 echo hello
 ./a.out
 ls
+./a.out
 sdfg
