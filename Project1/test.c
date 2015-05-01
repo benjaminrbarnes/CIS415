@@ -4,8 +4,8 @@
 #include <stdio.h>
 int main(){
     int i = 0;
-    while(i < 6){
-        printf("%d on iteration: %d\n",getpid(),i);
+    while(i < 600){
+        //printf("%d on iteration: %d\n",getpid(),i);
         i++;
         sleep(1);
     }

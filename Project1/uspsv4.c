@@ -9,7 +9,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
-//#include <string.h>
 #include <stdlib.h>
 #include "p1fxns.h"
 
@@ -46,7 +45,6 @@ void signal_handler(int sig) {
     switch (sig) {
         case SIGALRM:
             //p1putstr(1, "Timer fired.\n");
-            //printf("Timer fired. Stopping %d\n", curr_running->pid);
             kill(curr_running->pid, SIGSTOP);
             ALRM_received++;
             break;
@@ -79,38 +77,78 @@ void remove_newline_char(char *char_ptr) {
 
 
 void get_pid_info() {
+    int i;
+    /* declaring char arrays used in function */
     char buff[BUF_SIZE];
+    char word[WORD_SIZE];
     char mem_path[BUF_SIZE];
     char char_pid[WORD_SIZE];
     char proc[7] = "/proc/\0";
     char status_path[8] = "/status\0";
-    char pid_info1[6] = "**** \0";
+    char io_path[8] = "/io\0";
+    char pid_info1[7] = "\n**** \0";
     char pid_info2[16] = " PID INFO ****\n\0";
+    char pid_info3[28] = "**************************\n\n";
+    char bytes_read[25] = "Bytes read from memory: \0";
+    char bytes_written[26] = "Bytes written to memory: \0";
+    char program_name[9] = "Program \0";
+    char curr_state[9] = "Current \0";
+
+    /* initializing char arrays and p, our pid */
     int p = curr_running->pid;
-    int g;
+    for (i = 0; i < BUF_SIZE; i++) buff[i] = '\0';
+    for (i = 0; i < BUF_SIZE; i++) mem_path[i] = '\0';
 
-    for(g = 0; g < BUF_SIZE; g++) buff[g] = '\0';
-    for(g = 0; g < BUF_SIZE; g++) mem_path[g] = '\0';
-
+    /* convert int to string, construct path
+     * for first call to /proc */
     sprintf(char_pid, "%d", p);
-    //p1putstr(1, &(proc[0]));
     strcat(mem_path, proc);
     strcat(mem_path, char_pid);
     strcat(mem_path, status_path);
-    //printf(mem_path);
+
+    /* beginning to print program info from /proc/PID/status */
     int ret = open(mem_path, O_RDONLY);
-    g = p1getline(ret, buff, BUF_SIZE);
-    //printf("number of chars in buf %d\n", g);
-    //printf("get line called. should print word below for pid: %d\n",p);
+    p1getline(ret, buff, BUF_SIZE);
     p1putstr(1, &(pid_info1[0]));
     p1putstr(1, &(char_pid[0]));
     p1putstr(1, &(pid_info2[0]));
+    p1putstr(1, &(program_name[0]));
     p1putstr(1, &(buff[0]));
-    //printf("**************************\n");
-    //fflush(stdout);
+    p1putstr(1, &(curr_state[0]));
+
+    /* getting new line; init buffer to NULL for safety */
+    for (i = 0; i < BUF_SIZE; i++) buff[i] = '\0';
+    p1getline(ret, buff, BUF_SIZE);
+    p1putstr(1, &(buff[0]));
+
+    /* constructing new path for different proc directory */
+    for (i = 0; i < BUF_SIZE; i++) buff[i] = '\0';
+    for (i = 0; i < BUF_SIZE; i++) mem_path[i] = '\0';
+    strcat(mem_path, proc);
+    strcat(mem_path, char_pid);
+    strcat(mem_path, io_path);
+    ret = open(mem_path, O_RDONLY);
+    p1getline(ret, buff, BUF_SIZE);
+
+    /* printing second set of info from /proc/PID/io */
+    p1putstr(1, &(bytes_read[0]));
+    int word_loc = 0;
+    word_loc = p1getword(buff, word_loc, word);
+    p1getword(buff, word_loc, word);
+    p1putstr(1, &(word[0]));
+    for (i = 0; i < BUF_SIZE; i++) buff[i] = '\0';
+    p1getline(ret, buff, BUF_SIZE);
+    p1putstr(1, &(bytes_written[0]));
+    for (i = 0; i < WORD_SIZE; i++) word[i] = '\0';
+    word_loc = 0;
+    word_loc = p1getword(buff, word_loc, word);
+    p1getword(buff, word_loc, word);
+    p1putstr(1, &(word[0]));
+
+    /* print trailing asterisks */
+    p1putstr(1, &(pid_info3[0]));
 }
 
-//int main(int argc, const char *args[]) {
 int main() {
     int i;
     int num_of_words;
@@ -193,7 +231,7 @@ int main() {
             while (!USR1_received)
                 sleep(1);
             if (execvp(arg[0], arg) < 0) {
-                printf("failed\n");
+                /* child failed to execute; free and exit */
                 for (i = 0; i < num_of_words; i++) {
                     free(arg[i]);
                 }
@@ -224,8 +262,7 @@ int main() {
         }
     }
 
-    // printf("number of programs: %d\n", list_of_programs->num_of_programs);
-
+    /* setting timer */
     if (setitimer(ITIMER_REAL, &it_val, NULL) == -1) {
         p1perror(1, "Error calling setitimer()");
         _exit(1);
@@ -242,13 +279,11 @@ int main() {
 
         /* set the running pid to global */
         curr_running = curr;
-
         if (curr_running->first) {
+            /* if this is the first execution of the program, call sigusr */
             kill(curr_running->pid, SIGUSR1);
             curr_running->first = 0;
             get_pid_info();
-
-
         } else {
             kill(curr_running->pid, SIGCONT);
         }
@@ -258,22 +293,21 @@ int main() {
 
         /* once alarm is set off, see if child is done */
         if (child_done) {
-            printf("child finished\n");
             /* if child is done, we need to remove it, so
              * here we are finding its position
              * before we remove it from linked list */
             if (curr_running == list_of_programs->head) {
-                /* we are done with process at the head */
+                /* we are done with process at the head; remove head */
                 list_of_programs->head = curr_running->next;
                 if (list_of_programs->head != NULL)
                     list_of_programs->head->prev = NULL;
             } else if (curr_running == list_of_programs->tail) {
-                /* we are done with process at tail */
+                /* we are done with process at tail; remove tail */
                 list_of_programs->tail = curr_running->prev;
                 if (list_of_programs->tail != NULL)
                     list_of_programs->tail->next = NULL;
             } else {
-                /* process is somewhere in the middle */
+                /* process is somewhere in the middle; remove node in middle */
                 curr_running->prev->next = curr_running->next;
                 curr_running->next->prev = curr_running->prev;
             }
@@ -288,7 +322,7 @@ int main() {
             curr = curr->next;
         }
 
-        /* reset alarm for next */
+        /* reset alarm for next iteration */
         ALRM_received = 0;
     }
 
