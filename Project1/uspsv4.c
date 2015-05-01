@@ -8,6 +8,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <unistd.h>
+#include <fcntl.h>
+//#include <string.h>
 #include <stdlib.h>
 #include "p1fxns.h"
 
@@ -20,6 +22,7 @@
 typedef struct process Process;
 int USR1_received = 0;
 int ALRM_received = 0;
+int child_done = 0;
 Process *curr_running;
 
 /* process struct holds pid and acts as node to doubly LList (Programs) */
@@ -38,17 +41,24 @@ typedef struct programs {
 } Programs;
 
 
-void signal_handler(int sig){
-    switch (sig){
+/* handles signals SIGALRM, SIGUSR1, SIGCHLD */
+void signal_handler(int sig) {
+    switch (sig) {
         case SIGALRM:
             //p1putstr(1, "Timer fired.\n");
-            printf("Timer fired. Stopping %d\n", curr_running->pid);
+            //printf("Timer fired. Stopping %d\n", curr_running->pid);
             kill(curr_running->pid, SIGSTOP);
             ALRM_received++;
             break;
         case SIGUSR1:
             USR1_received++;
             break;
+        case SIGCHLD:
+            /* returns non-zero if child is done */
+            if (waitpid(curr_running->pid, NULL, WNOHANG) != 0) {
+                child_done = 1;
+                ALRM_received++;
+            }
     }
 }
 
@@ -65,6 +75,39 @@ void remove_newline_char(char *char_ptr) {
         }
         char_ptr++;
     }
+}
+
+
+void get_pid_info() {
+    char buff[BUF_SIZE];
+    char mem_path[BUF_SIZE];
+    char char_pid[WORD_SIZE];
+    char proc[7] = "/proc/\0";
+    char status_path[8] = "/status\0";
+    char pid_info1[6] = "**** \0";
+    char pid_info2[16] = " PID INFO ****\n\0";
+    int p = curr_running->pid;
+    int g;
+
+    for(g = 0; g < BUF_SIZE; g++) buff[g] = '\0';
+    for(g = 0; g < BUF_SIZE; g++) mem_path[g] = '\0';
+
+    sprintf(char_pid, "%d", p);
+    //p1putstr(1, &(proc[0]));
+    strcat(mem_path, proc);
+    strcat(mem_path, char_pid);
+    strcat(mem_path, status_path);
+    //printf(mem_path);
+    int ret = open(mem_path, O_RDONLY);
+    g = p1getline(ret, buff, BUF_SIZE);
+    //printf("number of chars in buf %d\n", g);
+    //printf("get line called. should print word below for pid: %d\n",p);
+    p1putstr(1, &(pid_info1[0]));
+    p1putstr(1, &(char_pid[0]));
+    p1putstr(1, &(pid_info2[0]));
+    p1putstr(1, &(buff[0]));
+    //printf("**************************\n");
+    //fflush(stdout);
 }
 
 //int main(int argc, const char *args[]) {
@@ -86,7 +129,11 @@ int main() {
     }
     if (signal(SIGUSR1, signal_handler) == SIG_ERR) {
         p1perror(1, "Unable to catch SIGUSR1");
-        exit(1);
+        _exit(1);
+    }
+    if (signal(SIGCHLD, signal_handler) == SIG_ERR) {
+        p1perror(1, "Unable to catch SIGCHILD");
+        _exit(1);
     }
 
     /* initializing timer */
@@ -166,7 +213,7 @@ int main() {
                 free(list_of_programs);
                 exit(1);
             }
-        }else if(list_of_programs->tail->pid < 0){
+        } else if (list_of_programs->tail->pid < 0) {
             /* fork failed */
             p1perror(1, "Fork Failed");
         }
@@ -195,9 +242,13 @@ int main() {
 
         /* set the running pid to global */
         curr_running = curr;
+
         if (curr_running->first) {
             kill(curr_running->pid, SIGUSR1);
             curr_running->first = 0;
+            get_pid_info();
+
+
         } else {
             kill(curr_running->pid, SIGCONT);
         }
@@ -206,9 +257,10 @@ int main() {
         while (!ALRM_received);
 
         /* once alarm is set off, see if child is done */
-        if (waitpid(curr_running->pid, NULL, WNOHANG) != 0) {
+        if (child_done) {
             printf("child finished\n");
-            /* if child is done, we need to remove it, so here we are seeing its position
+            /* if child is done, we need to remove it, so
+             * here we are finding its position
              * before we remove it from linked list */
             if (curr_running == list_of_programs->head) {
                 /* we are done with process at the head */
@@ -231,6 +283,7 @@ int main() {
             Process *temp = curr;
             curr = curr->next;
             free(temp);
+            child_done = 0;
         } else if (list_of_programs->num_of_programs != 0) {
             curr = curr->next;
         }
