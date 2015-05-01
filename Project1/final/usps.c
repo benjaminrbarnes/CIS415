@@ -6,9 +6,8 @@
  * This is my own work.
  */
 
-/* #include <string.h> */
-/* #include <stdio.h> */
-
+/*#include <string.h>
+#include <stdio.h>*/
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/wait.h>
@@ -49,7 +48,7 @@ typedef struct programs {
 void signal_handler(int sig) {
     switch (sig) {
         case SIGALRM:
-            //p1putstr(1, "Timer fired.\n");
+            /* p1putstr(1, "Timer fired.\n"); */
             kill(curr_running->pid, SIGSTOP);
             ALRM_received++;
             break;
@@ -292,7 +291,7 @@ int main() {
             /* if this is the first execution of the program, call sigusr */
             kill(curr_running->pid, SIGUSR1);
             curr_running->first = 0;
-            get_pid_info();
+            /*get_pid_info();*/
         } else {
             /* otherwise call sigcont */
             kill(curr_running->pid, SIGCONT);

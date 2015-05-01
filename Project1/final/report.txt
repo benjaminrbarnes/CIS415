@@ -1,0 +1,20 @@
+NOTE: Because I don't want my part 4 spamming you (as I dont know how correctly it works by your standards), to make my
+project print status out to you, you will need to uncomment line 294, where "get_pid_info()" is called. Thanks for understanding!
+
+
+
+My project is complete up to part 4ish. Parts 1-3 should work for sure, but I feel that part 4 might not be complete by your standards.
+For part 4, I made a function called get_pid_info which is called right after a process is started. It reports the name,
+status, bytes read, and bytes written from memory. It will print these out using p1putstr. The printing can be messy, as it can
+get intertwined with the potential output of programs executing.
+
+Also, compiling my code right now with 'make' will get you two warning about strcat and sprintf (convert ints to chars) but even
+with the warnings it seems to run just fine. I have commented out the stdio.h and string.h headers as we aren't allowed to use them,
+but uncommenting them will get rid of those two warnings. As I said, the code runs for me on the VM without the imports present.
+I used the same flags in my make file as the ones given to us.
+
+Hopefully I didn't miss anything!
+
+Best,
+Benjamin Barnes
+951289352

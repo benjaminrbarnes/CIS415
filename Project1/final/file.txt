@@ -1,0 +1,4 @@
+./a.out
+ls
+gdfs
+ls -a
