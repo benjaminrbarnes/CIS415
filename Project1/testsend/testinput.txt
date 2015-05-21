@@ -1,0 +1,6 @@
+bogosort 9 7 6 5 4 1
+daddy
+mom
+helloWorld
+iamyour ch ch ch ch CHERRYBOMB!
+

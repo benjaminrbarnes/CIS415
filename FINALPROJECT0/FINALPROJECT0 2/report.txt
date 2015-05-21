@@ -1,0 +1,11 @@
+As far as the state of my solution, everything is working (I think?). I was
+having a lot of problems freeing things initially when resizing
+but I was eventually able to get it to work correctly. When I run
+valgrind, I get the expected output and have no errors or memory leaks.
+I remember hearing Prof. Sventek say that we might want to make our hash tables
+do something more than double each time the resize is called, so I added a
+#define SCALEFACTOR which one can change to whatever they want to scale the hash
+map by. Hopefully I didn't miss anything!
+
+Best,
+Benjamin Barnes

@@ -1,0 +1,7 @@
+man 7 signal
+read ^ that one in depth
+man 2 fork  
+
+make sure you always reap your children 
+
+do not use unsafe system calls 

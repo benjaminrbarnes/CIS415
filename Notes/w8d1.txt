@@ -1,0 +1,13 @@
+Contiguous allocation of tiles is simple but hindered as we obviously know that files are not all one size. 
+
+extent-based systems are used in newer systems and use a modified contiguous allocation scheme. we allocate things in chunks of segments rather than segments, called extents. an extent is a contiguous bloc of discs
+
+linked allocation - each file is a liked list of disk blocks: blocks may be scattered anywhere on the disk. top bit of data is a pointer. you only need one address in the file header -> to the front of the data. problem is there is no random access because you have to traverse the whole thing
+
+indexed allocation - uses fixed size chunks and puts all the pointers into an index block. this allows random access at the cost of the overhead of the index block. index table is much like a page table 
+There is the possibility of a two-level index allocation. this is where one index points to another index block which then actually points to something, so we much have two indicies when we are searching for something.
+
+because there is more "overhead" with a double index allocation, if the file is small we will only use the direct blocks which point directly to the blocks. the bigger it gets we add more levels of index indirection: single, double, triple, etc 
+
+FREE SPACE MANAGEMENT
+ 

@@ -1,0 +1,3 @@
+page cache 
+
+a general thing that happens in OS is that you will cache things a lot 
